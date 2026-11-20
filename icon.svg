@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F6F7F9"/>
+    </linearGradient>
+    <linearGradient id="headerGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#EF4444"/>
+      <stop offset="100%" stop-color="#DC2626"/>
+    </linearGradient>
+  </defs>
+  <!-- 배경 베이스 -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  <!-- 상단 빨간 헤더 -->
+  <path d="M0 112C0 50.144 50.144 0 112 0h288c61.856 0 112 50.144 112 112v56H0v-56z" fill="url(#headerGrad)"/>
+  <!-- 스프링 링 장식 -->
+  <rect x="148" y="44" width="24" height="56" rx="12" fill="#FFFFFF" fill-opacity="0.92"/>
+  <rect x="340" y="44" width="24" height="56" rx="12" fill="#FFFFFF" fill-opacity="0.92"/>
+  <!-- 요일 도트 포인트 -->
+  <circle cx="156" cy="232" r="11" fill="#E53935"/>
+  <circle cx="222" cy="232" r="11" fill="#CBD5E1"/>
+  <circle cx="288" cy="232" r="11" fill="#CBD5E1"/>
+  <circle cx="354" cy="232" r="11" fill="#2563EB"/>
+  <!-- 대표 빨간 날짜 숫자 '31' -->
+  <text x="256" y="408" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif" font-size="184" font-weight="800" letter-spacing="-6" fill="#E53935">31</text>
+</svg>
