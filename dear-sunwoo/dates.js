@@ -98,6 +98,52 @@
     }
     return result;
   }
+  function quickText(event) {
+    return (event.time ? event.time+' ' : '')+event.title;
+  }
+  function parseQuickLine(value) {
+    const raw=value.trim();
+    if(!raw)return null;
+    const clock=raw.match(/^(\d{1,2}):(\d{1,2})(?!\d)\s*(.*)$/u);
+    let title=raw,time='';
+    if(clock){
+      time=p2(Number(clock[1]))+':'+p2(Number(clock[2]));title=clock[3].trim();
+      if(!validTime(time))throw Error('시간은 00:00~23:59 사이로 적어 주세요.');
+      if(!title)throw Error('시간 뒤에 일정 이름을 적어 주세요.');
+    } else if(/^\d{1,2}:/.test(raw))throw Error('시간은 16:30처럼 적어 주세요.');
+    if(title.length>120)throw Error('일정 이름은 120자까지 적을 수 있어요.');
+    return {title,time};
+  }
+  function applyQuickDay(state,date,rows,memo,newId) {
+    if(!validDate(date) || typeof memo!=='string' || memo.length>2000)throw Error('날짜와 메모를 확인해 주세요.');
+    const next=readState(state), edits=new Map(), additions=[];
+    for(const [index,row] of rows.entries()){
+      const old=row.id?next.events.find(e=>e.id===row.id):null;
+      if(row.id && (!old||!occurs(old,date)))throw Error('일정이 바뀌었어요. 닫고 다시 열어 주세요.');
+      if(old && edits.has(old.id))throw Error('같은 일정이 두 번 들어 있어요.');
+      const sameText=old && quickText(old)===row.text.trim();
+      let parsed;
+      try{parsed=sameText?{title:old.title,time:old.time}:parseQuickLine(row.text);}
+      catch(err){throw Error((index+1)+'번째 줄 · '+err.message);}
+      if(!parsed){
+        if(old)edits.set(old.id,old.repeat==='none'?[]:[{...old,skip:[...new Set([...old.skip,date])]}]);
+        continue;
+      }
+      const reminder=parsed.time?Number(row.reminder):-1;
+      const repeat=old?.repeat && old.repeat!=='none'?old.repeat:row.repeat;
+      if(old && sameText && old.reminder===reminder && old.repeat===repeat)continue;
+      const fields={...parsed,date,repeat,reminder};
+      if(!old){additions.push(cleanEvent({...fields,id:newId(),category:'personal',note:'',done:[],skip:[]}));continue;}
+      if(old.repeat==='none'){edits.set(old.id,[cleanEvent({...old,...fields})]);continue;}
+      // A quick edit affects this occurrence. Other dates keep their series and metadata.
+      const series={...old,skip:[...new Set([...old.skip,date])]};
+      const detached=cleanEvent({...old,...fields,id:newId(),repeat:'none',skip:[],done:old.done.includes(date)?[date]:[]});
+      edits.set(old.id,[series,detached]);
+    }
+    next.events=next.events.flatMap(e=>edits.has(e.id)?edits.get(e.id):[e]).concat(additions);
+    if(memo.trim())next.memos[date]=memo.trim();else delete next.memos[date];
+    return readState(next);
+  }
   const holidays = {};
   for (const year of [2026,2027]) {
     for(const [md,name] of Object.entries({'01-01':'신정','03-01':'삼일절','05-01':'노동절','05-05':'어린이날','06-06':'현충일','07-17':'제헌절','08-15':'광복절','10-03':'개천절','10-09':'한글날','12-25':'성탄절'})) holidays[year+'-'+md]=name;
@@ -157,7 +203,7 @@
     if(e.time && e.reminder>=0)z.push('BEGIN:VALARM','TRIGGER:'+(e.reminder?'-PT'+e.reminder+'M':'PT0M'),'ACTION:DISPLAY','DESCRIPTION:'+icsEscape(e.title),'END:VALARM');
     z.push('END:VEVENT','END:VCALENDAR');return z.map(fold).join('\r\n')+'\r\n';
   }
-  const api={today,add,dow,validDate,validTime,stamp,shiftMonth,cleanEvent,readState,occurs,nextDate,plannedReminders,holidays,lunar,parsePhrase,ical,categories,repeats,fresh};
+  const api={quickText,parseQuickLine,applyQuickDay,today,add,dow,validDate,validTime,stamp,shiftMonth,cleanEvent,readState,occurs,nextDate,plannedReminders,holidays,lunar,parsePhrase,ical,categories,repeats,fresh};
   if(typeof module!=='undefined' && module.exports)module.exports=api;
   else globalThis.MoonCalendar=api;
 })();

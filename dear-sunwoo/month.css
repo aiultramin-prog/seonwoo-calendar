@@ -108,3 +108,42 @@ dialog::backdrop { background: #1114 }
 @media (min-width: 720px) { .top { padding-top: 22px; padding-bottom: 13px }.month-grid { min-height: calc(var(--rows,5)*78px) }.weekdays { padding-bottom: 15px }.day-line { max-width: 118px }.day { gap: 1px }.daily-memo { margin-block: 8px }.tabbar { padding-bottom: 14px } }
 @media (max-width: 380px) { .top { padding-inline: 8px }.year-button { padding: 0 10px }.arrow {width:24px}.actions button {min-width:32px}.sheet {padding:15px;gap:9px} }
 @media (hover:hover) { .day:hover, .tabbar button:hover, .actions button:hover, .date-open:hover { background-color: var(--soft) } }
+
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0 }
+.week-actions { display:flex; gap:6px }
+.full-editor-head { position:sticky; top:-1px; z-index:1; background:white }
+.save-top { color:#c5363e; font-weight:700; min-height:44px; padding:6px 8px }
+#daySheet[open] {
+  position: fixed; inset: auto; top: calc(var(--vv-top,0px) + var(--vv-height,100dvh) / 2); left: 50%; transform: translate(-50%,-50%);
+  margin: 0; padding: 0; width: min(408px,calc(100% - 46px)); max-height: calc(var(--vv-height,100dvh) - 14px);
+  overflow: hidden; border: 1px solid #fff; border-radius: 26px; background: #f8f8f9; box-shadow: 0 12px 40px #1414162b;
+}
+#daySheet::backdrop { background: #17171a35 }
+.quick-sheet { max-height: calc(var(--vv-height,100dvh) - 18px); display:flex; flex-direction:column; gap:10px; padding: clamp(13px,3.8vw,22px); }
+.quick-head { padding: 2px 10px 0; flex: none }
+.quick-head h2 { font-size: 1.12rem; font-weight: 700; letter-spacing: -.035em }
+.quick-head p { font-size: .94rem; color: #6b6b6e; margin-top: 4px }
+.quick-tools { flex:none; display:grid; justify-items:center; gap: 2px }
+.memo-toggle { font-size:.93rem; text-decoration:underline; text-underline-offset:2px; min-height:34px; padding:2px 10px }
+.emoji-bar { display:flex; align-items:center; justify-content:center; width:100% }
+.emoji-bar button { min-width:0; flex:1; max-width:37px; min-height:34px; padding:0; display:grid; place-items:center; font-size:1.12rem; line-height:1 }
+.emoji-bar button[aria-expanded=true] { border-radius:9px; background:#dedee2 }
+.emoji-bar .gear { width:18px; height:18px; color:#73737a }
+.quick-scroll { min-height: 0; overflow:auto; overscroll-behavior:contain; scrollbar-width:thin }
+.quick-rows { background:#ebebee; border-radius:18px; padding:0 13px; }
+.quick-row { display:flex; align-items:center; gap:3px; min-width:0; border-bottom:1px solid #d0d0d4; }
+.quick-row:last-child { border-bottom:none }
+.quick-row input { width:100%; min-width:0; height:43px; padding:6px 0; border:none; border-radius:0; outline:0; background:transparent; font-size:16px; font-weight:450; color:var(--ink); }
+.quick-row input::placeholder { color:#828288; font-size:.85rem }
+.quick-row button { width:30px; height:38px; color:#717177; font-size:19px; font-weight:500; flex:none; visibility:hidden; }
+.quick-row:focus-within button:not(:disabled) { visibility: visible }
+.quick-actions { display:flex; gap:8px; flex:none; margin-top:3px }
+.quick-actions button { min-height:43px; flex:1; border-radius:100px; background:#e6e6e9; font-size:1rem; font-weight:650 }
+#quickSave {color:#c83640}
+.quick-error {flex:none;line-height:1.3;font-size:.78rem}
+.quick-memo-text { box-sizing:border-box;width:100%; min-height:54px; margin-bottom:6px; border:1px solid #d9d9dc; border-radius:12px; background:white; padding:8px; color:var(--ink); font-size:16px }
+.quick-options { padding:8px 3px; display:grid; gap:5px; font-size:.84rem }
+.quick-options label { display:grid; gap:2px }
+.quick-options select { min-width:0; width:100%; min-height:34px; border:1px solid #d4d4d7; border-radius:8px; background:white;font-size:16px }
+.quick-options-title {font-weight:650}
+@media(max-height:690px) { .quick-sheet {gap:6px}.quick-row input {height:38px}.quick-head p{margin-top:1px}.quick-actions button {min-height:39px} }

@@ -88,7 +88,7 @@
     for(let i=0;i<cells;i++){
       const d=C.add(start,i);
       if(d.slice(0,7)!==first.slice(0,7)){grid.append(el('span','blank-day'));continue;}
-      const list=forDay(d),holiday=C.holidays[d];
+      const list=state.events.filter(e=>C.occurs(e,d)),holiday=C.holidays[d];
       const button=el('button','day'+(d===today?' is-today':'')+(d===selected?' selected':'')+(holiday?' holiday':C.dow(d)===0?' sun':C.dow(d)===6?' sat':''));
       button.type='button';button.dataset.date=d;
       button.setAttribute('aria-label',[d,holiday,list.length?'일정 '+list.length+'개':''].filter(Boolean).join(' '));
@@ -104,17 +104,106 @@
     }
     $('monthMemoText').textContent=state.memos[today]||'오늘 메모 쓰기';
   }
-  function renderDay(){
-    $('dayTitle').textContent=fullDay(selected);
-    $('dayMeta').textContent=[C.lunar(selected),C.holidays[selected]].filter(Boolean).join(' · ');
-    const list=forDay(selected), box=$('dayList');box.replaceChildren();
-    if(list.length)list.forEach(e=>row(box,e,selected));else empty(box,'등록된 일정이 없어요','');
-    $('dayMemo').textContent=state.memos[selected]?'이날 메모 보기':'이날 메모 쓰기';
+  let quickDay=null;
+  const toolbarIcons=[['❤️','하트'],['⭐','별'],['🎉','축하'],['☕','커피'],['📖','책'],['🏃','운동'],['⛱️','휴식']];
+  function updateVisibleArea(){
+    const viewport=window.visualViewport;
+    document.documentElement.style.setProperty('--vv-height',(viewport?.height||window.innerHeight)+'px');
+    document.documentElement.style.setProperty('--vv-top',(viewport?.offsetTop||0)+'px');
+  }
+  window.visualViewport?.addEventListener('resize',updateVisibleArea);
+  window.visualViewport?.addEventListener('scroll',updateVisibleArea);
+  window.addEventListener('resize',updateVisibleArea);
+  updateVisibleArea();
+  const blankLine=()=>({id:null,text:'',repeat:'none',reminder:-1,series:false});
+  function updateQuickOptions(){
+    if(!quickDay)return;
+    const entry=quickDay.rows[quickDay.focus];if(!entry)return;
+    $('quickOptionTitle').textContent=(quickDay.focus+1)+'번째 줄 설정';
+    let timed=false;try{timed=!!C.parseQuickLine(entry.text)?.time;}catch{}
+    $('quickRepeat').value=entry.repeat;$('quickRepeat').disabled=entry.series;
+    $('quickReminder').value=timed?entry.reminder:-1;$('quickReminder').disabled=!timed;
+    $('quickOptionHint').textContent=entry.series?'여기서는 선택한 회차만 바꿔요. 전체 반복은 주간의 일정 상세에서 바꿀 수 있어요.':!timed?'시간을 16:30처럼 앞에 적으면 알림을 선택할 수 있어요.':native?'아이폰 알림에 예약합니다.':'웹 알림은 주간의 일정 상세에서 캘린더 파일로 내보내 사용할 수 있어요.';
+  }
+  function addQuickLine(entry=blankLine()){
+    const index=quickDay.rows.length;quickDay.rows.push(entry);
+    const wrap=el('div','quick-row'),input=el('input',''),clear=el('button','','×');
+    input.type='text';input.maxLength=130;input.autocomplete='off';input.enterKeyHint='next';input.value=entry.text;
+    input.setAttribute('aria-label','일정 '+(index+1));
+    input.placeholder=index===0?'일정 입력':index===1?'예: 16:30 약속':'';
+    clear.type='button';clear.setAttribute('aria-label',(index+1)+'번째 줄 지우기');clear.disabled=!input.value;
+    function update(){
+      entry.text=input.value;clear.disabled=!entry.text;
+      if(entry.text && index===quickDay.rows.length-1)addQuickLine();
+      updateQuickOptions();msg($('quickError'),'');
+    }
+    input.addEventListener('input',update);
+    input.addEventListener('focus',()=>{quickDay.focus=index;updateQuickOptions();});
+    input.addEventListener('keydown',ev=>{
+      if(ev.key!=='Enter'||ev.isComposing||ev.keyCode===229)return;
+      ev.preventDefault();if(index+1===quickDay.rows.length)addQuickLine();
+      $('quickRows').children[index+1].querySelector('input').focus();
+    });
+    clear.addEventListener('mousedown',ev=>ev.preventDefault());
+    clear.onclick=()=>{input.value='';input.focus();update();};
+    wrap.append(input,clear);$('quickRows').append(wrap);
+    return input;
   }
   function openDay(d){
-    if(!C.validDate(d))return;selected=d;render();
-    if(!$('daySheet').open)$('daySheet').showModal();
+    if(!C.validDate(d))return;
+    if(!ready){announce('저장소를 열 수 없어요. 설정에서 백업을 확인해 주세요.');return;}
+    if($('daySheet').open && quickDay)return;
+    selected=d;render();
+    quickDay={date:d,base:raw,rows:[],focus:0};
+    $('dayTitle').textContent=Number(d.slice(0,4))+'년 '+md(d);
+    $('dayMeta').textContent=[C.lunar(d).replace(/^음력 /,'(음) '),C.holidays[d]].filter(Boolean).join(' · ');
+    const memo=state.memos[d]||'';$('quickMemoText').value=memo;$('quickMemoBox').hidden=true;
+    $('quickMemoToggle').textContent=memo?'📕 메모 보기':'📕 메모 추가';$('quickMemoToggle').setAttribute('aria-expanded','false');
+    $('quickOptions').hidden=true;$('quickGear').setAttribute('aria-expanded','false');msg($('quickError'),'');
+    $('quickRows').replaceChildren();
+    const existing=state.events.filter(e=>C.occurs(e,d));
+    for(const e of existing)addQuickLine({id:e.id,text:C.quickText(e),repeat:e.repeat,reminder:e.reminder,series:e.repeat!=='none'});
+    while(quickDay.rows.length<Math.max(3,existing.length+1))addQuickLine();
+    updateQuickOptions();updateVisibleArea();$('daySheet').showModal();
+    $('quickRows').querySelector('input').focus({preventScroll:true});
   }
+  for(const [icon,label] of toolbarIcons){
+    const button=el('button','',icon);button.type='button';button.setAttribute('aria-label',label+' 이모지');
+    button.addEventListener('mousedown',ev=>ev.preventDefault());
+    button.onclick=()=>{
+      if(!quickDay)return;
+      const input=$('quickRows').children[quickDay.focus].querySelector('input');
+      const start=input.selectionStart??input.value.length,end=input.selectionEnd??start;
+      if(input.value.length-(end-start)+icon.length>130)return;
+      input.focus({preventScroll:true});input.setRangeText(icon,start,end,'end');input.dispatchEvent(new Event('input'));
+    };
+    $('quickEmoji').append(button);
+  }
+  const gear=el('button','');gear.type='button';gear.id='quickGear';gear.setAttribute('aria-label','선택한 줄의 반복 및 알림');gear.setAttribute('aria-expanded','false');
+  const cog=el('i','gear');cog.setAttribute('aria-hidden','true');gear.append(cog);$('quickEmoji').append(gear);
+  gear.onclick=()=>{$('quickOptions').hidden=!$('quickOptions').hidden;gear.setAttribute('aria-expanded',String(!$('quickOptions').hidden));updateQuickOptions();};
+  $('quickRepeat').onchange=()=>{if(quickDay)quickDay.rows[quickDay.focus].repeat=$('quickRepeat').value;};
+  $('quickReminder').onchange=()=>{if(quickDay)quickDay.rows[quickDay.focus].reminder=Number($('quickReminder').value);};
+  $('quickMemoToggle').onclick=()=>{
+    const box=$('quickMemoBox');box.hidden=!box.hidden;
+    $('quickMemoToggle').setAttribute('aria-expanded',String(!box.hidden));
+    if(!box.hidden)$('quickMemoText').focus();
+  };
+  $('quickCancel').onclick=()=>$('daySheet').close();
+  $('daySheet').addEventListener('close',()=>{if(!$('daySheet').open)quickDay=null;});
+  $('quickForm').onsubmit=async ev=>{
+    ev.preventDefault();if(!quickDay)return;
+    const draft=quickDay,memo=$('quickMemoText').value,save=$('quickSave');
+    try{
+      save.disabled=true;
+      const next=C.applyQuickDay(state,draft.date,draft.rows,memo,id);
+      if(JSON.stringify(next)===JSON.stringify(state)){$('daySheet').close();return;}
+      if(native && draft.rows.some(r=>r.reminder>=0 && (!r.id||state.events.find(e=>e.id===r.id)?.reminder!==r.reminder)))await allowAlarms();
+      await change(()=>next,{expectedRaw:draft.base});
+      $('daySheet').close();announce('저장했어요.');
+    }catch(err){msg($('quickError'),err.message||'저장하지 못했어요.');}
+    finally{save.disabled=false;}
+  };
   function renderWeek(){
     const start=C.add(selected,-C.dow(selected)), end=C.add(start,6);
     $('weekPeriod').textContent=md(start)+' – '+md(end);
@@ -172,13 +261,13 @@
       if(b.dataset.tab===view||(view==='tasks'&&b.dataset.tab==='week'))b.setAttribute('aria-current','page');
       else b.removeAttribute('aria-current');
     });
-    renderHeader();renderDay();
+    renderHeader();
     if(view==='calendar')renderCalendar();
     if(view==='week')renderWeek();
     if(view==='tasks')renderTasks();
     if(view==='memos')renderMemos();
     if(view==='search')renderSearch();
-    $('add').disabled=!ready;
+    $('weekNew').disabled=!ready;
   }
   function adjustForm(){
     const hasTime=!!$('timeInput').value;$('reminderInput').disabled=!hasTime;
@@ -267,7 +356,7 @@
     $('jump').close();view='calendar';selectDay(d);
   };
   $('today').onclick=()=>{$('jump').close();view='calendar';selectDay(C.today());};
-  $('add').onclick=()=>openEditor(null,selected);
+  $('weekNew').onclick=()=>openEditor(null,selected);
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>showView(b.dataset.tab));
   $('openTasks').onclick=()=>showView('tasks');$('backWeek').onclick=()=>showView('week');
   let touch=null;
@@ -293,7 +382,7 @@
     if(changed && state.memos[d]){$('memoDate').value=memoDay;msg($('memoError'),'그날은 이미 메모가 있어요. 작성 중인 메모를 먼저 저장하세요.');return;}
     setMemoDate(d);if(changed)$('memoBody').value=draft;
   };
-  $('monthMemo').onclick=()=>openMemo(C.today());$('dayMemo').onclick=()=>openMemo(selected);$('newMemo').onclick=()=>openMemo(C.today());
+  $('monthMemo').onclick=()=>openMemo(C.today());$('newMemo').onclick=()=>openMemo(C.today());
   async function saveMemo(deleting){
     const d=$('memoDate').value,t=$('memoBody').value.trim();
     if(!C.validDate(d)||(!deleting&&!t)){msg($('memoError'),'날짜와 메모를 입력하세요.');return;}
