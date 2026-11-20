@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="달편지">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' moonletter://app; style-src 'self' moonletter://app; img-src 'self' moonletter://app data:; connect-src 'self'; worker-src 'self'; manifest-src 'self' moonletter://app; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>달편지 · 선우의 달력</title>
+<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-180.png"><link rel="icon" href="./icon-192.png"><link rel="stylesheet" href="./month.css">
+<script src="./dates.js" defer></script><script src="./month.js" defer></script>
+</head>
+<body>
+<div id="appShell">
+<header class="top"><button id="pickYear" class="pill year-button" aria-label="연도와 월 선택"><span id="yearLabel"></span></button>
+<div class="month-control"><button id="prev" class="arrow" aria-label="이전 달"><i class="chevron left"></i></button><h1><button id="pickMonth" aria-label="월 선택"><span id="monthNumber"></span>월</button></h1><button id="next" class="arrow" aria-label="다음 달"><i class="chevron"></i></button></div>
+<div class="pill actions"><button id="shareApp" aria-label="달력 링크 공유"><i class="share-icon" aria-hidden="true">↑</i></button><button id="settingsOpen" aria-label="설정과 백업"><span class="gear" aria-hidden="true"></span></button></div></header>
+<main id="main">
+<section id="calendarPage" aria-label="월간 달력"><div class="weekdays" aria-hidden="true"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+<div id="grid" class="month-grid" role="group" aria-label="날짜 선택"></div>
+<button class="daily-memo" id="monthMemo"><span class="note-icon" aria-hidden="true"></span><span id="monthMemoText">오늘 메모 쓰기</span></button></section>
+<section id="weekPage" class="panel" hidden aria-label="주간 일정"><div class="page-title"><div><h2>주간</h2><p id="weekPeriod" class="meta"></p></div><button class="secondary" id="openTasks">할 일</button></div><div id="weekList"></div></section>
+<section id="tasksPage" class="panel" hidden aria-label="할 일"><div class="page-title"><h2>할 일</h2><button class="secondary" id="backWeek">주간으로</button></div><div class="seg"><button data-filter="open" aria-pressed="true">미완료</button><button data-filter="done" aria-pressed="false">완료한 일정</button></div><p id="taskPeriod" class="meta"></p><div id="taskList" class="list"></div></section>
+<section id="memosPage" class="panel" hidden aria-label="메모"><div class="page-title"><h2>메모</h2><button id="newMemo" class="secondary">메모 쓰기</button></div><div id="memoList"></div></section>
+<section id="searchPage" class="panel" hidden aria-label="검색"><h2>검색</h2><label class="search-field"><i class="search-icon" aria-hidden="true"></i><input id="query" type="search" placeholder="일정이나 메모 검색" aria-label="일정이나 메모 검색"></label><p id="resultCount" class="meta" aria-live="polite"></p><div id="searchList" class="list"></div></section></main>
+<nav class="tabbar" aria-label="주 메뉴"><div class="tab-group"><button data-tab="calendar" aria-current="page"><i class="cal-icon" aria-hidden="true"></i>달력</button><button data-tab="week"><i class="week-icon" aria-hidden="true"><i></i><i></i><i></i><i></i></i>주간</button><button data-tab="memos"><i class="note-icon" aria-hidden="true"></i>메모</button></div><button class="search-tab" data-tab="search" aria-label="검색"><i class="search-icon" aria-hidden="true"></i></button></nav></div>
+<dialog id="daySheet" aria-labelledby="dayTitle"><div class="sheet"><div class="sheet-head"><div><h2 id="dayTitle"></h2><p class="meta" id="dayMeta"></p></div><button type="button" data-close="daySheet" class="x" aria-label="닫기">×</button></div><div id="dayList"></div><button type="button" class="secondary memo-action" id="dayMemo">이날 메모 쓰기</button><button class="primary" id="add">일정 추가</button></div></dialog>
+<dialog id="jump" aria-labelledby="jumpTitle"><form id="jumpForm" class="sheet"><div class="sheet-head"><h2 id="jumpTitle">연도와 월</h2><button type="button" data-close="jump" class="x" aria-label="닫기">×</button></div><div class="two"><label>연도<input id="jumpYear" type="number" inputmode="numeric" min="1900" max="2099" required></label><label>월<select id="jumpMonth"></select></label></div><div class="sheet-actions"><button type="button" id="today" class="secondary">오늘로</button><button class="primary" type="submit">이동</button></div></form></dialog>
+<dialog id="memoEditor" aria-labelledby="memoTitle"><form class="sheet" id="memoForm"><div class="sheet-head"><h2 id="memoTitle">메모 쓰기</h2><button type="button" data-close="memoEditor" class="x" aria-label="닫기">×</button></div><label>날짜<input id="memoDate" type="date" min="1900-01-01" max="2099-12-31" required></label><label>메모<textarea id="memoBody" rows="5" maxlength="2000" placeholder="이날 기억할 내용을 적으세요"></textarea></label><p class="error" id="memoError" role="alert" hidden></p><div class="sheet-actions"><button type="button" class="danger" id="removeMemo" hidden>삭제</button><button class="primary" type="submit">저장</button></div></form></dialog>
+<dialog id="shareDialog" aria-labelledby="shareTitle"><div class="sheet"><div class="sheet-head"><h2 id="shareTitle">달력 링크</h2><button type="button" data-close="shareDialog" class="x" aria-label="닫기">×</button></div><label>공유할 주소<input id="shareAddress" readonly></label><p class="meta">일정은 각자의 기기에 저장됩니다.</p></div></dialog>
+<dialog id="editor" aria-labelledby="editorTitle"><form id="editForm" class="sheet"><div class="sheet-head"><h2 id="editorTitle">일정 추가</h2><button type="button" data-close="editor" class="x" aria-label="닫기">×</button></div>
+<label>제목<input id="titleInput" maxlength="120" required placeholder="어떤 일정인가요?" autocomplete="off"></label>
+<button type="button" class="text-button" id="quickParse">문장에서 날짜·시간 채우기</button><p id="parseHint" class="micro" hidden></p>
+<div class="two"><label>날짜<input id="dateInput" type="date" required min="1900-01-01" max="2099-12-31"></label><label>시간 <small>한국 시간</small><input id="timeInput" type="time"></label></div>
+<div class="two"><label>분류<select id="categoryInput"><option value="personal">일상</option><option value="together">함께</option><option value="special">기념일</option></select></label><label>반복<select id="repeatInput"><option value="none">반복 안 함</option><option value="daily">매일</option><option value="weekly">매주</option><option value="monthly">매월</option><option value="yearly">매년</option></select></label></div>
+<label id="scopeRow" hidden>반복 일정 변경 범위<select id="scopeInput"><option value="one">선택한 회차만</option><option value="series">전체 반복 일정</option></select></label>
+<label>알림<select id="reminderInput"><option value="-1">알림 없음</option><option value="0">시작 시간</option><option value="10">10분 전</option><option value="30">30분 전</option><option value="60">1시간 전</option><option value="1440">하루 전</option></select></label><p class="micro" id="alarmHint"></p>
+<label>메모 <small>선택</small><textarea id="noteInput" maxlength="4000" rows="2" placeholder="기억하고 싶은 내용을 적으세요"></textarea></label>
+<p id="formError" class="error" role="alert" hidden></p><div class="sheet-actions"><button type="button" id="deleteEvent" class="danger" hidden>삭제</button><button type="button" id="exportEvent" class="secondary" hidden>캘린더 파일</button><button type="submit" id="save" class="primary">저장</button></div>
+</form></dialog>
+<dialog id="settings" aria-labelledby="settingsTitle"><div class="sheet"><div class="sheet-head"><div><p class="eyebrow">달편지</p><h2 id="settingsTitle">설정과 백업</h2></div><button data-close="settings" class="x" aria-label="닫기">×</button></div>
+<p class="meta">일정은 이 기기에 저장됩니다. 기기를 바꾸기 전 백업 파일을 보관해 주세요.</p><div class="settings-group"><button id="backup" class="setting-action">백업 파일 내보내기 <span aria-hidden="true">↓</span></button><button id="restore" class="setting-action">백업 가져오기 <span aria-hidden="true">↑</span></button><input type="file" id="importInput" accept=".json,application/json" hidden></div>
+<h3>일정 알림</h3><p class="meta" id="settingsAlarm"></p><button id="alarmAccess" class="secondary" hidden>알림 사용 설정</button>
+<div id="installTip"><h3>홈 화면에 추가</h3><p class="meta">아이폰은 Safari의 공유 메뉴에서 ‘홈 화면에 추가’를, 안드로이드는 Chrome 메뉴에서 ‘홈 화면에 추가’ 또는 ‘앱 설치’를 선택하세요.</p></div>
+<h3>달력 정보</h3><p class="meta">한국 시간 기준 · 공휴일 2026–2027년<br>음력은 기기에서 한국 음력 변환을 지원할 때 표시됩니다.</p>
+<p id="settingsMsg" class="error" role="status" hidden></p></div></dialog>
+<dialog id="confirmDialog" aria-labelledby="confirmTitle"><div class="sheet"><h2 id="confirmTitle"></h2><p class="meta" id="confirmText"></p><div class="sheet-actions"><button id="cancelConfirm" class="secondary">취소</button><button id="acceptConfirm" class="primary">확인</button></div></div></dialog>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<noscript>달편지를 사용하려면 JavaScript를 켜 주세요.</noscript>
+</body></html>
