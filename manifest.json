@@ -1,0 +1,20 @@
+{
+  "name": "빨간달력",
+  "short_name": "빨간달력",
+  "description": "대한민국 공휴일·음력과 초간편 메모를 한눈에 담는 아이폰 최적화 달력 웹앱",
+  "lang": "ko-KR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFFFF",
+  "theme_color": "#E53935",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
