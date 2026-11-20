@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="빨간달력">
+  <meta name="theme-color" content="#FFFFFF" id="metaThemeColor">
+  <meta name="format-detection" content="telephone=no">
+  <title>빨간달력</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/svg+xml" href="./icon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icon.svg" id="appleTouchIcon">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-shell" id="appShell">
+    <!-- 상단 헤더 (노치 / 다이내믹 아일랜드 Safe Area 반영) -->
+    <header class="top-bar">
+      <div class="top-bar-left">
+        <button type="button" class="month-Trigger" id="monthPickerBtn" aria-label="연도 및 월 선택">
+          <span class="month-title" id="currentMonthLabel">2026년 11월</span>
+          <svg class="chevron-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <span class="app-SubBadge" id="appBrandBadge">빨간달력</span>
+      </div>
+
+      <div class="top-bar-actions">
+        <button type="button" class="pill-btn today-btn" id="goTodayBtn" aria-label="오늘 날짜로 이동">오늘</button>
+        <button type="button" class="icon-btn" id="openGiftBtn" aria-label="선물 메시지 보기" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 12 20 22 4 22 4 12"></polyline>
+            <rect x="2" y="7" width="20" height="5" rx="1"></rect>
+            <line x1="12" y1="22" x2="12" y2="7"></line>
+            <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
+            <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
+          </svg>
+        </button>
+        <button type="button" class="icon-btn" id="openHolidaysBtn" aria-label="연간 빨간 날 모아보기" title="빨간날 모아보기">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="3"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+            <circle cx="12" cy="15.5" r="2" fill="currentColor" stroke="none"></circle>
+          </svg>
+        </button>
+        <button type="button" class="icon-btn" id="openSearchBtn" aria-label="일정 및 공휴일 검색">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"></circle>
+            <line x1="20" y1="20" x2="16.35" y2="16.35"></line>
+          </svg>
+        </button>
+        <button type="button" class="icon-btn" id="openSettingsBtn" aria-label="설정 및 데이터 백업">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- 월 이동 보조 네비게이션 및 이달의 요약 바 -->
+    <div class="month-subbar">
+      <button type="button" class="nav-arrow-btn" id="prevMonthBtn" aria-label="이전 달">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="month-summary-text" id="monthSummaryText">이달의 빨간 날과 일정을 한눈에 확인하세요</div>
+      <button type="button" class="nav-arrow-btn" id="nextMonthBtn" aria-label="다음 달">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M7.5 15L12.5 10L7.5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+
+    <!-- 요일 헤더 -->
+    <div class="weekday-header" role="row">
+      <div class="weekday-cell sun">일</div>
+      <div class="weekday-cell">월</div>
+      <div class="weekday-cell">화</div>
+      <div class="weekday-cell">수</div>
+      <div class="weekday-cell">목</div>
+      <div class="weekday-cell">금</div>
+      <div class="weekday-cell sat">토</div>
+    </div>
+
+    <!-- 월간 달력 그리드 (좌우 스와이프 지원) -->
+    <main class="calendar-viewport" id="calendarViewport">
+      <div class="calendar-weeks" id="calendarWeeks" role="grid" aria-label="월간 달력"></div>
+    </main>
+
+    <!-- 하단 빠른 요약 바 (Safe Area 반영) -->
+    <footer class="bottom-quick-bar" id="bottomQuickBar">
+      <div class="quick-bar-info" id="selectedDayPreview">날짜를 탭하면 바로 메모할 수 있어요</div>
+      <button type="button" class="quick-add-fab" id="quickOpenSheetBtn" aria-label="선택한 날짜에 바로 메모 작성">
+        <span>+ 간편 기록</span>
+      </button>
+    </footer>
+  </div>
+
+  <!-- 공통 딤 백드롭 -->
+  <div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
+
+  <!-- 1. 날짜별 초간편 메모·일정 바텀시트 -->
+  <section class="bottom-sheet" id="dayBottomSheet" aria-hidden="true" role="dialog" aria-labelledby="sheetDateTitle">
+    <div class="sheet-drag-zone" id="daySheetDragHandle">
+      <span class="sheet-handle-bar"></span>
+    </div>
+
+    <div class="sheet-header">
+      <div>
+        <div class="sheet-date-row">
+          <h2 class="sheet-date-title" id="sheetDateTitle">11월 20일 (금)</h2>
+          <span class="sheet-dday-chip" id="sheetDdayChip">오늘</span>
+        </div>
+        <div class="sheet-sub-meta" id="sheetSubMeta">음력 10.12</div>
+      </div>
+      <button type="button" class="sheet-close-btn" data-close-sheet aria-label="닫기">✕</button>
+    </div>
+
+    <!-- 초간편 1줄 입력 폼 -->
+    <form class="quick-memo-form" id="quickMemoForm" autocomplete="off">
+      <input type="hidden" id="editingItemId" value="">
+      <div class="quick-input-row">
+        <button type="button" class="color-dot-trigger" id="activeColorDotBtn" aria-label="색상 태그 변경" title="색상 선택"></button>
+        <input
+          type="text"
+          class="quick-text-input"
+          id="quickMemoInput"
+          placeholder="할 일이나 메모를 입력하고 저장을 탭하세요"
+          maxlength="120"
+        >
+        <button type="submit" class="quick-save-btn" id="quickSaveBtn">저장</button>
+      </div>
+
+      <div class="quick-form-toolbar">
+        <div class="color-palette-inline" id="colorPaletteInline"></div>
+        <button type="button" class="toggle-detail-btn" id="toggleDetailOptionsBtn" aria-expanded="false">
+          기간·반복·메모 설정 ▾
+        </button>
+      </div>
+
+      <!-- 확장 상세 옵션 (연속 일정, 반복 일정, 보조 메모) -->
+      <div class="detail-options-panel" id="detailOptionsPanel" hidden>
+        <div class="form-field-grid">
+          <label class="field-block">
+            <span class="field-label">시작일</span>
+            <input type="date" id="eventStartDateInput" class="field-input">
+          </label>
+          <label class="field-block">
+            <span class="field-label">종료일 (연속 일정)</span>
+            <input type="date" id="eventEndDateInput" class="field-input">
+          </label>
+        </div>
+
+        <div class="form-field-grid single-col">
+          <label class="field-block">
+            <span class="field-label">반복 설정</span>
+            <select id="eventRepeatSelect" class="field-input">
+              <option value="none">반복 안 함</option>
+              <option value="yearly-solar">매년 반복 (양력 기념일·생일)</option>
+              <option value="yearly-lunar">매년 반복 (음력 생일·기일 자동 환산)</option>
+              <option value="monthly">매월 같은 날 반복</option>
+              <option value="weekly">매주 같은 요일 반복</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="field-block">
+          <span class="field-label">상세 메모 (선택)</span>
+          <textarea id="eventNoteInput" class="field-textarea" rows="2" placeholder="장소, 준비물, 간단한 메모를 남겨보세요" maxlength="500"></textarea>
+        </label>
+
+        <div class="edit-cancel-row" id="editCancelRow" hidden>
+          <span class="editing-indicator">기존 일정을 수정 중입니다</span>
+          <button type="button" class="text-btn" id="cancelEditBtn">수정 취소</button>
+        </div>
+      </div>
+    </form>
+
+    <!-- 선택한 날짜의 공휴일·일정·메모 리스트 -->
+    <div class="sheet-scroll-body" id="dayEventsContainer"></div>
+  </section>
+
+  <!-- 2. 빠른 연도·월 이동 바텀시트 -->
+  <section class="bottom-sheet compact-sheet" id="monthPickerSheet" aria-hidden="true" role="dialog" aria-labelledby="pickerSheetTitle">
+    <div class="sheet-drag-zone">
+      <span class="sheet-handle-bar"></span>
+    </div>
+    <div class="sheet-header">
+      <h2 class="sheet-date-title" id="pickerSheetTitle">빠른 연도 · 월 이동</h2>
+      <button type="button" class="sheet-close-btn" data-close-sheet aria-label="닫기">✕</button>
+    </div>
+    <div class="picker-year-selector">
+      <button type="button" class="year-step-btn" id="pickerPrevYearBtn" aria-label="이전 연도">‹</button>
+      <span class="picker-year-label" id="pickerYearLabel">2026년</span>
+      <button type="button" class="year-step-btn" id="pickerNextYearBtn" aria-label="다음 연도">›</button>
+    </div>
+    <div class="picker-month-grid" id="pickerMonthGrid"></div>
+  </section>
+
+  <!-- 3. 연간 빨간 날 모아보기 바텀시트 -->
+  <section class="bottom-sheet tall-sheet" id="holidaysSheet" aria-hidden="true" role="dialog" aria-labelledby="holidaysSheetTitle">
+    <div class="sheet-drag-zone">
+      <span class="sheet-handle-bar"></span>
+    </div>
+    <div class="sheet-header">
+      <div>
+        <h2 class="sheet-date-title" id="holidaysSheetTitle">연간 빨간 날 모아보기</h2>
+        <p class="sheet-sub-meta" id="holidaysCountSummary">공휴일 및 대체공휴일 전체 일정</p>
+      </div>
+      <button type="button" class="sheet-close-btn" data-close-sheet aria-label="닫기">✕</button>
+    </div>
+    <div class="picker-year-selector compact">
+      <button type="button" class="year-step-btn" id="holidayPrevYearBtn" aria-label="이전 연도">‹</button>
+      <span class="picker-year-label" id="holidayYearLabel">2026년</span>
+      <button type="button" class="year-step-btn" id="holidayNextYearBtn" aria-label="다음 연도">›</button>
+    </div>
+    <div class="sheet-scroll-body" id="yearlyHolidaysList"></div>
+  </section>
+
+  <!-- 4. 키워드 검색 바텀시트 -->
+  <section class="bottom-sheet tall-sheet" id="searchSheet" aria-hidden="true" role="dialog" aria-labelledby="searchSheetTitle">
+    <div class="sheet-drag-zone">
+      <span class="sheet-handle-bar"></span>
+    </div>
+    <div class="sheet-header">
+      <h2 class="sheet-date-title" id="searchSheetTitle">일정 · 메모 · 공휴일 검색</h2>
+      <button type="button" class="sheet-close-btn" data-close-sheet aria-label="닫기">✕</button>
+    </div>
+    <div class="search-box-wrap">
+      <input type="search" id="searchKeywordInput" class="quick-text-input search-input" placeholder="검색어 입력 (예: 여행, 생일, 추석, 병원)">
+    </div>
+    <div class="sheet-scroll-body" id="searchResultsList"></div>
+  </section>
+
+  <!-- 5. 설정 및 원터치 JSON 백업·복원 바텀시트 -->
+  <section class="bottom-sheet tall-sheet" id="settingsSheet" aria-hidden="true" role="dialog" aria-labelledby="settingsSheetTitle">
+    <div class="sheet-drag-zone">
+      <span class="sheet-handle-bar"></span>
+    </div>
+    <div class="sheet-header">
+      <div>
+        <h2 class="sheet-date-title" id="settingsSheetTitle">설정 및 데이터 보관</h2>
+        <p class="sheet-sub-meta">화면 표시 설정과 백업·복원을 관리합니다</p>
+      </div>
+      <button type="button" class="sheet-close-btn" data-close-sheet aria-label="닫기">✕</button>
+    </div>
+
+    <div class="sheet-scroll-body settings-body">
+      <div class="settings-section">
+        <h3 class="settings-heading">포인트 컬러 테마</h3>
+        <div class="theme-preset-grid" id="themePresetGrid"></div>
+      </div>
+
+      <div class="settings-section">
+        <h3 class="settings-heading">달력 표시 옵션</h3>
+        <div class="setting-row">
+          <span class="setting-label">음력 날짜 표시</span>
+          <select id="lunarDisplayModeSelect" class="field-input compact-select">
+            <option value="all">매일 표시</option>
+            <option value="key">초하루(1일)·보름(15일)만</option>
+            <option value="off">표시 안 함</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">화면 모드</span>
+          <select id="appearanceModeSelect" class="field-input compact-select">
+            <option value="system">아이폰 설정 자동 연동</option>
+            <option value="light">라이트 모드 고정</option>
+            <option value="dark">다크 모드 고정</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3 class="settings-heading">데이터 백업 및 복원 (기기 내부 저장)</h3>
+        <p class="settings-desc">
+          모든 메모와 일정은 외부 서버 전송 없이 아이폰 내부에만 안전하게 저장됩니다. Safari 데이터 초기화나 기기 변경에 대비해 주기적으로 백업해 두세요.
+        </p>
+        <div class="backup-stats" id="backupStatsBox">현재 저장된 일정 0개</div>
+
+        <div class="backup-btn-grid">
+          <button type="button" class="action-card-btn primary" id="downloadBackupBtn">
+            <strong>JSON 파일 다운로드</strong>
+            <span>아이폰 '파일' 앱에 백업 저장</span>
+          </button>
+          <button type="button" class="action-card-btn" id="copyBackupClipboardBtn">
+            <strong>백업 텍스트 복사</strong>
+            <span>메모장·나와의 채팅에 붙여넣기</span>
+          </button>
+        </div>
+
+        <div class="restore-box">
+          <div class="restore-mode-row">
+            <span class="setting-label">복원 방식</span>
+            <select id="restoreModeSelect" class="field-input compact-select">
+              <option value="merge">기존 일정 유지 + 합치기</option>
+              <option value="replace">백업 데이터로 전체 덮어쓰기</option>
+            </select>
+          </div>
+
+          <div class="backup-btn-grid">
+            <label class="action-card-btn file-label-btn">
+              <strong>JSON 파일 불러오기</strong>
+              <span>저장해 둔 백업 파일 선택</span>
+              <input type="file" id="uploadBackupInput" accept=".json,application/json" hidden>
+            </label>
+            <button type="button" class="action-card-btn" id="togglePasteRestoreBtn">
+              <strong>복사한 텍스트로 복원</strong>
+              <span>클립보드 JSON 직접 붙여넣기</span>
+            </button>
+          </div>
+
+          <div class="paste-restore-area" id="pasteRestoreArea" hidden>
+            <textarea id="pasteRestoreTextarea" class="field-textarea" rows="3" placeholder="복사해 둔 백업 JSON 텍스트를 여기에 붙여넣으세요"></textarea>
+            <button type="button" class="quick-save-btn full-width-btn" id="applyPasteRestoreBtn">텍스트 데이터 복원 실행</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3 class="settings-heading">아이폰 홈 화면 설치 안내</h3>
+        <p class="settings-desc">
+          Safari 하단의 <strong>공유 버튼(□↑)</strong>을 누른 뒤 <strong>'홈 화면에 추가'</strong>를 선택하면 주소창 없는 전체 화면 달력 앱으로 바로 실행됩니다.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. 선물 메시지 모달 카드 -->
+  <div class="gift-modal-wrap" id="giftModalWrap" hidden role="dialog" aria-labelledby="giftModalTitle">
+    <div class="gift-card">
+      <div class="gift-card-badge">SPECIAL CALENDAR</div>
+      <h2 class="gift-card-title" id="giftModalTitle">선물 메시지</h2>
+      <p class="gift-card-message" id="giftModalMessage"></p>
+      <p class="gift-card-sender" id="giftModalSender"></p>
+      <button type="button" class="quick-save-btn full-width-btn" id="closeGiftModalBtn">달력 시작하기</button>
+    </div>
+  </div>
+
+  <!-- 인앱 토스트 알림 -->
+  <div class="toast-banner" id="toastBanner" role="status" aria-live="polite" hidden></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
