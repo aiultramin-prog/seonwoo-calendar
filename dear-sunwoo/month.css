@@ -147,3 +147,26 @@ dialog::backdrop { background: #1114 }
 .quick-options select { min-width:0; width:100%; min-height:34px; border:1px solid #d4d4d7; border-radius:8px; background:white;font-size:16px }
 .quick-options-title {font-weight:650}
 @media(max-height:690px) { .quick-sheet {gap:6px}.quick-row input {height:38px}.quick-head p{margin-top:1px}.quick-actions button {min-height:39px} }
+
+.pair-sheet {display:grid;gap:.7rem}
+.pair-sheet :is(p,h2) {margin:0}
+.pair-sheet input[readonly] {font-size:16px}
+.pair-sheet label {margin:0}
+.pair-sheet small {display:block;margin-top:.4rem;color:#655e60}
+.owner-picker {display:flex;align-items:center;justify-content:center;gap:.3rem;padding:.25rem 0 .6rem}
+.owner-picker span {font-size:.8rem;color:#675d62;margin-right:.25rem}
+.owner-picker button,.owner-tag {background:#f3f1f1;border:0;border-radius:100px;padding:.32rem .62rem;font-size:.84rem;color:#3c393c}
+.owner-picker button[aria-pressed="true"] {background:#443d43;color:white}
+.quick-row .owner-tag {font-size:.69rem;min-width:2.4rem;margin-right:.25rem;padding:.25rem .35rem;flex:none;text-align:center}
+.day-line.owner-dongmin,.owner-tag.owner-dongmin {color:#295a86}
+.day-line.owner-sunwoo,.owner-tag.owner-sunwoo {color:#9c455f}
+.day-line.owner-together,.owner-tag.owner-together {color:#695086}
+#shareApp.is-paired {position:relative}
+#shareApp.is-paired:after {content:"";position:absolute;top:6px;right:4px;width:7px;height:7px;border-radius:50%;background:#528165;border:1px solid white}
+
+.pair-legend {display:flex;justify-content:center;gap:.8rem;align-items:center;color:#615e60;margin:0 auto .4rem;font-size:.8rem}
+.pair-legend [data-person] {display:inline-flex;align-items:center;gap:.24rem}
+.pair-legend [data-person]:before {content:"";display:inline-block;width:.5rem;height:.5rem;border-radius:50%;background:currentColor}
+.pair-legend [data-person=dongmin] {color:#295a86}
+.pair-legend [data-person=sunwoo] {color:#9c455f}
+.pair-legend [data-person=together] {color:#695086}

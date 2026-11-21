@@ -24,7 +24,8 @@
       ![e.done,e.skip].every(a => Array.isArray(a) && a.length <= 10000 && a.every(validDate))) {
       throw Error('일정 형식이 올바르지 않아요.');
     }
-    return {id:e.id,title:e.title.trim(),date:e.date,time:e.time,category:e.category,repeat:e.repeat,
+    if (e.owner!==undefined && !['dongmin','sunwoo','together'].includes(e.owner))throw Error('일정의 주인을 확인해 주세요.');
+    return {id:e.id,...(e.owner ? {owner:e.owner}:{}),title:e.title.trim(),date:e.date,time:e.time,category:e.category,repeat:e.repeat,
       note:e.note,reminder:e.time ? e.reminder : -1,done:[...new Set(e.done)],skip:[...new Set(e.skip)]};
   }
   function readState(raw) {
@@ -131,8 +132,9 @@
       }
       const reminder=parsed.time?Number(row.reminder):-1;
       const repeat=old?.repeat && old.repeat!=='none'?old.repeat:row.repeat;
-      if(old && sameText && old.reminder===reminder && old.repeat===repeat)continue;
-      const fields={...parsed,date,repeat,reminder};
+      const owner=row.owner||old?.owner;
+      if(old && sameText && old.reminder===reminder && old.repeat===repeat && old.owner===owner)continue;
+      const fields={...parsed,date,repeat,reminder,...(owner?{owner}:{})};
       if(!old){additions.push(cleanEvent({...fields,id:newId(),category:'personal',note:'',done:[],skip:[]}));continue;}
       if(old.repeat==='none'){edits.set(old.id,[cleanEvent({...old,...fields})]);continue;}
       // A quick edit affects this occurrence. Other dates keep their series and metadata.
