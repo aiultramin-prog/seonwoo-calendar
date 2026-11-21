@@ -170,3 +170,14 @@ dialog::backdrop { background: #1114 }
 .pair-legend [data-person=dongmin] {color:#295a86}
 .pair-legend [data-person=sunwoo] {color:#9c455f}
 .pair-legend [data-person=together] {color:#695086}
+
+#pairIndicator {font:inherit;padding:.2rem .1rem;color:inherit}
+#shareApp.is-paired:after {background:#aba8a9}
+#shareApp.is-paired[data-sync="ok"]:after {background:#528165}
+#shareApp.is-paired[data-sync="waiting"]:after {background:#b2791f}
+.pair-check {display:flex;gap:.6rem;justify-content:space-between;align-items:center;padding:.65rem .7rem;background:#f5f5f6;border-radius:.7rem}
+#pairCode {font-size:.9rem;font-variant-numeric:tabular-nums}
+#pairStatus {margin:.2rem 0 0}
+.pair-check button {flex-shrink:0}
+#joinDetails summary {padding:.5rem 0;cursor:pointer}
+#joinDetails label {margin:.3rem 0 .5rem}

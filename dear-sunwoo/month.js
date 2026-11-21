@@ -16,17 +16,42 @@
   function msg(node,text){node.textContent=text;node.hidden=!text;}
   const P=window.MoonPair;
   const prefKey='moonletter.pair.settings.1';
-  let prefs={secret:'',active:false,role:'dongmin'}, connection=null, pairVersion=null, pairStatus='', joining='', polling=false;
-  if(!native){
-    try {
-      const saved=JSON.parse(localStorage.getItem(prefKey)||'null');
-      if(saved && P.valid(saved.secret))prefs={secret:saved.secret,active:saved.active===true,role:saved.role==='sunwoo'?'sunwoo':'dongmin'};
-      const supplied=new URLSearchParams(location.hash.slice(1)).get('pair');
-      if(supplied){
-        if(P.valid(supplied)){joining=supplied;sessionStorage.setItem('moonletter.pending',supplied);}
-        history.replaceState(null,'',location.pathname+location.search);
-      }else{const pending=sessionStorage.getItem('moonletter.pending');if(P.valid(pending))joining=pending;}
-    }catch{}
+  const emptyPrefs=()=>({secret:'',active:false,role:'dongmin',previous:''});
+  let prefs=emptyPrefs(),connection=null,pairVersion=null,pairStatus='',joining='',polling=false;
+  let syncState='checking',tabChangeDeferred=false,inviteDeferred=false;
+  function storedPrefs(){
+    const saved=JSON.parse(localStorage.getItem(prefKey)||'null');
+    if(!saved||!P.valid(saved.secret))return emptyPrefs();
+    return {secret:saved.secret,active:saved.active===true,role:saved.role==='sunwoo'?'sunwoo':'dongmin',
+      previous:P.valid(saved.previous)&&saved.previous!==saved.secret?saved.previous:''};
+  }
+  if(!native){try{prefs=storedPrefs();}catch{}}
+  function clearInvite(){
+    joining='';inviteDeferred=false;
+    try{sessionStorage.removeItem('moonletter.pending');}catch{}
+    if(new URLSearchParams(location.hash.slice(1)).has('pair'))history.replaceState(null,'',location.pathname+location.search);
+  }
+  function queueInvite(secret){
+    joining=secret;
+    try{sessionStorage.setItem('moonletter.pending',secret);}catch{}
+    if(document.querySelector('dialog[open]:not(#shareDialog)')){
+      inviteDeferred=true;announce('지금 편집을 마치면 받은 초대를 열어요.');return;
+    }
+    inviteDeferred=false;openPair();
+  }
+  function receiveInvite(resume=false){
+    if(native)return;
+    const params=new URLSearchParams(location.hash.slice(1));
+    let key=P.invitation(location.href);
+    if(!key && params.has('pair')){
+      clearInvite();openPair();msg($('pairError'),'초대 링크가 잘렸어요. 상대방에게 초대 링크 복사를 요청해 주세요.');return;
+    }
+    if(!key && resume){try{key=sessionStorage.getItem('moonletter.pending');}catch{}}
+    if(!P.valid(key))return;
+    if(key===prefs.secret&&shared()){
+      clearInvite();pollRoom(true);announce('이미 같은 공유 달력에 연결돼 있어요.');return;
+    }
+    queueInvite(key);
   }
   const shared=()=>!native && prefs.active && P.valid(prefs.secret);
   const cacheKey=secret=>'moonletter.pair.offline.'+secret;
@@ -36,27 +61,57 @@
     localStorage.setItem(prefKey,JSON.stringify(next));
     prefs=next;
   }
-  function showPairStatus(text){pairStatus=text;if($('pairStatus'))$('pairStatus').textContent=text;}
+  function showPairStatus(text,level='checking'){
+    pairStatus=text;syncState=level;
+    $('pairStatus').textContent=text;
+    $('pairCode').textContent=connection?'달력 번호 '+connection.roomCode:'달력 번호 확인 중';
+    $('shareApp').dataset.sync=level;
+    $('pairIndicator').textContent=level==='waiting'?'공유 · 연결 확인':'공유 달력';
+  }
   function applySnapshot(record){
     const next=JSON.stringify(record.state), changed=!ready||raw!==next;
     pairVersion=record.version;state=record.state;raw=next;ready=true;damaged=false;
     try{localStorage.setItem(cacheKey(prefs.secret),JSON.stringify(record));}catch{}
-    showPairStatus('동기화됨 · '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}));
+    showPairStatus('동기화됨 · '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),'ok');
     if(changed)render();
   }
   function queue(task){
     const pending=mutations.then(task);mutations=pending.catch(()=>{});return pending;
   }
-  async function pollRoom(){
-    if(!shared()||polling||document.hidden)return;
+  async function pollRoom(force=false){
+    if(!shared()||document.hidden||(!force&&polling))return;
     polling=true;
     try{await queue(async()=>{
       if(!shared())return;
       connection=connection||await P.connect(prefs.secret);
-      const latest=await connection.load(pairVersion);
-      if(latest)applySnapshot(latest);else showPairStatus('동기화됨 · 두 사람의 일정이 최신 상태예요.');
-    });}catch{showPairStatus('연결 대기 중 · 다시 연결하면 새 일정을 받아요.');}
+      if(force||!pairVersion)showPairStatus('서버에서 일정 확인 중…');
+      const latest=await connection.load(force?undefined:pairVersion);
+      if(latest)applySnapshot(latest);
+      else showPairStatus('동기화됨 · '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),'ok');
+    });}catch(err){showPairStatus('연결 대기 · '+(err.message||'지금 동기화를 다시 눌러 주세요.'),'waiting');}
     finally{polling=false;}
+  }
+  function differentChoice(a,b){return a.active!==b.active || a.secret!==b.secret;}
+  async function updateTabChoice(){
+    if(native)return;
+    let saved;
+    try{saved=storedPrefs();}catch{return;}
+    if(!differentChoice(saved,prefs)){prefs=saved;tabChangeDeferred=false;return;}
+    if(document.querySelector('dialog[open]:not(#shareDialog)')){
+      tabChangeDeferred=true;return;
+    }
+    await queue(async()=>{
+      const current=storedPrefs();
+      if(!differentChoice(prefs,current))return;
+      prefs=current;connection=null;pairVersion=null;tabChangeDeferred=false;
+      showPairStatus('연결 확인 중…');
+      if(shared())loadCached();else{await read();render();}
+      if($('shareDialog').open)pairPanel();
+    });
+  }
+  async function foreground(){
+    if(document.hidden)return;
+    await updateTabChoice();await refresh();syncAlarms();
   }
   function loadCached(){
     state=C.fresh();raw=null;ready=false;damaged=false;pairVersion=null;
@@ -85,6 +140,7 @@
   }
   function change(transform,{repair=false,expectedRaw}={}) {
     const commit=async()=>{
+      if(!native && differentChoice(prefs,storedPrefs()))throw Error('다른 창에서 연결할 달력이 바뀌었어요. 작성한 내용을 복사해 두고 창을 닫아 새 달력을 확인해 주세요.');
       if(shared()){
         if(!ready||!raw)throw Error('공유 달력을 먼저 불러와 주세요.');
         const base=C.readState(JSON.parse(expectedRaw??raw));
@@ -92,7 +148,7 @@
         try{
           connection=connection||await P.connect(prefs.secret);
           applySnapshot(await connection.commit(base,draft));
-        }catch(err){showPairStatus('저장을 확인하지 못했어요. 연결 상태와 최신 일정을 확인해 주세요.');throw err;}
+        }catch(err){showPairStatus('저장을 확인하지 못했어요. 연결 상태와 최신 일정을 확인해 주세요.','waiting');throw err;}
         return;
       }
       if(!ready&&!repair)throw Error('현재 기기 저장소를 열 수 없어요.');
@@ -479,14 +535,21 @@
   $('removeMemo').onclick=async()=>{if(await confirmChoice('메모를 삭제할까요?',$('memoDate').value,'삭제'))await saveMemo(true);};
   function pairPanel(){
     const invite=joining && joining!==prefs.secret, active=shared();
-    $('pairInfo').textContent=native?'Safari에서 같은 달력을 열어 두 사람의 일정을 맞출 수 있어요.':invite?'초대받은 공유 달력에 참여할까요? 이 기기의 개인 일정은 그대로 보관돼요.':active?'동민·선우·함께 일정을 두 사람이 같이 보고 수정해요. 초대 링크는 두 분끼리 보관하세요.':prefs.secret?'연결해 둔 공유 달력으로 돌아갈 수 있어요.':'동민과 선우가 같은 달력에 각자 일정과 함께할 약속을 적어요. 기존 개인 일정은 따로 보관돼요.';
+    $('pairInfo').textContent=native?'Safari에서 같은 달력을 열어 두 사람의 일정을 맞출 수 있어요.':invite?'초대받은 공유 달력에 참여할까요? 참여할 이름을 선택해 주세요. 기존 달력은 따로 보관돼요.':active?'동민·선우·함께 일정을 두 사람이 같이 보고 수정해요. 초대 링크는 두 분끼리 보관하세요.':prefs.secret?'연결해 둔 공유 달력으로 돌아갈 수 있어요.':'동민과 선우가 같은 달력에 각자 일정과 함께할 약속을 적어요. 기존 개인 일정은 따로 보관돼요.';
     $('pairStart').textContent=native?'Safari에서 공유 달력 열기':invite?'이 달력에 참여':prefs.secret?'공유 달력 열기':'공유 달력 만들기';
     $('pairStart').hidden=!!(active&&!invite);
     $('pairInvite').hidden=!active||!!invite;
     $('pairImport').hidden=!active||!!invite;
     $('pairSwitch').hidden=!active||!!invite;
     $('roleField').hidden=!!native;
-    $('pairRole').value=invite?'sunwoo':prefs.role;
+    $('pairRole').value=invite&&!prefs.secret?'':prefs.role;
+    $('pairCheck').hidden=!active||!!invite;
+    $('pairCode').textContent=connection?'달력 번호 '+connection.roomCode:'달력 번호 확인 중';
+    $('pairCopy').hidden=!active||!!invite;
+    $('priorRoom').hidden=!prefs.previous||!!invite;
+    $('joinDetails').hidden=!!native||!!invite;
+    $('joinDetails').open=false;$('joinAddress').value='';
+    $('shareApp').dataset.sync=syncState;
     $('shareAddress').value=active?pairLink():'';
     $('pairAddressBox').hidden=true;
     $('pairStatus').textContent=active&&!invite?pairStatus:'';
@@ -496,7 +559,27 @@
     pairPanel();
     if(!$('shareDialog').open)$('shareDialog').showModal();
   }
-  $('shareApp').onclick=openPair;
+  $('shareApp').onclick=openPair;$('pairIndicator').onclick=openPair;
+  $('pairRefresh').onclick=async()=>{
+    const button=$('pairRefresh');button.disabled=true;
+    try{await pollRoom(true);}finally{button.disabled=false;}
+  };
+  $('checkInvite').onclick=()=>{
+    const key=P.invitation($('joinAddress').value);
+    if(!key){msg($('pairError'),'초대 정보가 없는 주소예요. 상대방이 ‘초대 링크 복사’로 보낸 전체 주소를 붙여넣어 주세요.');return;}
+    if(shared() && key===prefs.secret){
+      $('joinAddress').value='';$('joinDetails').open=false;msg($('pairError'),'');
+      announce('이미 같은 공유 달력이에요. 최신 일정을 확인해요.');pollRoom(true);return;
+    }
+    queueInvite(key);
+  };
+  $('priorRoom').onclick=()=>{if(P.valid(prefs.previous))queueInvite(prefs.previous);};
+  $('shareDialog').addEventListener('close',()=>{if(!native&&joining&&!$('shareDialog').open)clearInvite();});
+  $('pairCopy').onclick=async()=>{
+    const url=pairLink();
+    try{await navigator.clipboard.writeText(url);announce('초대 링크를 복사했어요. 상대방에게 붙여넣어 보내세요.');}
+    catch{$('pairAddressBox').hidden=false;$('shareAddress').value=url;$('shareAddress').focus();$('shareAddress').select();}
+  };
   $('settingsPair').onclick=()=>{$('settings').close();openPair();};
   $('pairRole').onchange=()=>{
     if(!joining && prefs.secret){
@@ -507,12 +590,14 @@
     if(native){await native.postMessage({action:'openSharedWeb'});return;}
     const btn=$('pairStart');btn.disabled=true;msg($('pairError'),'');
     const role=$('pairRole').value;
+    if(!P.labels[role]){msg($('pairError'),'이 기기에서 사용할 이름을 선택해 주세요.');btn.disabled=false;return;}
     try{await queue(async()=>{
       const secret=joining||prefs.secret||P.newSecret();
       const next=await P.connect(secret);
       const record=joining||prefs.secret?await next.load():await next.write(C.fresh(),'new');
       if(!record)throw Error('공유 달력을 만들지 못했어요. 다시 시도해 주세요.');
-      setPrefs({secret,role,active:true});connection=next;joining='';sessionStorage.removeItem('moonletter.pending');applySnapshot(record);render();
+      const previous=prefs.secret&&secret!==prefs.secret?prefs.secret:prefs.previous;
+      setPrefs({secret,role,active:true,previous});connection=next;clearInvite();applySnapshot(record);render();
       pairPanel();announce('공유 달력을 열었어요.');
     });}catch(err){msg($('pairError'),err.message||'공유 달력에 연결하지 못했어요.');}
     finally{btn.disabled=false;}
@@ -546,11 +631,23 @@
   };
   document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{filter=b.dataset.filter;renderTasks();});
   $('query').addEventListener('input',renderSearch);
-  window.addEventListener('storage',e=>{if(!shared()&&(e.key===storageKey || e.key===null))refresh();});
-  document.addEventListener('visibilitychange',async()=>{if(!document.hidden){await refresh();syncAlarms();}});
+  window.addEventListener('storage',e=>{
+    if(e.key===prefKey || e.key===null)foreground();
+    else if(!shared()&&e.key===storageKey)refresh();
+  });
+  document.addEventListener('close',()=>{
+    if(document.querySelector('dialog[open]:not(#shareDialog)'))return;
+    if(tabChangeDeferred)foreground();
+    if(inviteDeferred&&joining){inviteDeferred=false;openPair();}
+  },true);
+  window.addEventListener('hashchange',()=>receiveInvite());
+  window.addEventListener('focus',foreground);
+  window.addEventListener('pageshow',event=>{if(event.persisted)foreground();});
+  document.addEventListener('visibilitychange',foreground);
+  window.addEventListener('offline',()=>{if(shared())showPairStatus('오프라인 · 인터넷이 연결되면 다시 받아요.','waiting');});
   if(!native && 'serviceWorker' in navigator && location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
   window.moonOpenDate=d=>{if(C.validDate(d)){view='calendar';openDay(d);}};
   setInterval(()=>{if(shared())pollRoom();},8000);
   window.addEventListener('online',()=>{if(shared())pollRoom();});
-  (async()=>{if(shared())loadCached();await refresh();syncAlarms();if(joining){if(joining===prefs.secret&&shared()){joining='';sessionStorage.removeItem('moonletter.pending');}else openPair();}if(native){try{const d=await native.postMessage({action:'ready'});if(d)window.moonOpenDate(d);}catch{}}})();
+  (async()=>{if(shared())loadCached();receiveInvite(true);if(!joining && new URLSearchParams(location.search).get('sync')==='1'){openPair();history.replaceState(null,'',location.pathname+location.hash);}await refresh();syncAlarms();if(native){try{const d=await native.postMessage({action:'ready'});if(d)window.moonOpenDate(d);}catch{}}})();
 })();

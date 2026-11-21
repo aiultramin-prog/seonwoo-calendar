@@ -24,11 +24,21 @@
     return {version:1,events:[...mergeMap(events(base),events(draft),events(latest)).values()],
       memos:Object.fromEntries(mergeMap(notes(base),notes(draft),notes(latest)))};
   }
+  function invitation(value){
+    try{
+      const link=new URL(value.trim());
+      const validPage=(link.origin===new URL(publicUrl).origin && ['/seonwoo-calendar/dear-sunwoo/','/seonwoo-calendar/dear-sunwoo/index.html'].includes(link.pathname))
+        || (link.origin===new URL(endpoint).origin && ['/','/index.html'].includes(link.pathname));
+      const keys=new URLSearchParams(link.hash.slice(1)).getAll('pair');
+      return validPage && keys.length===1 && valid(keys[0]) ? keys[0] : null;
+    }catch{return null;}
+  }
   async function connect(secret, options={}){
     if(!valid(secret))throw Error('초대 링크를 다시 확인해 주세요.');
     const digest=tag=>crypto.subtle.digest('SHA-256',encoder.encode('dalpair-v1/'+tag+'/'+secret));
     const key=await crypto.subtle.importKey('raw',await digest('cipher'),'AES-GCM',false,['encrypt','decrypt']);
     const bearer=hex(await digest('access'));
+    const roomCode=hex(await digest('display')).slice(0,8).toUpperCase().replace(/^(.{4})/,'$1-');
     const transport=options.fetch||fetch;
     const api=options.endpoint||endpoint;
     async function request(method,rev,body){
@@ -36,7 +46,11 @@
       if(rev)headers['X-Dal-Version']=rev;
       if(body)headers['Content-Type']='application/octet-stream';
       const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),12000);
-      try{return await transport(api,{method,headers,body,credentials:'omit',referrerPolicy:'no-referrer',cache:'no-store',signal:abort.signal});}
+      try{
+        const response=await transport(api,{method,headers,body,credentials:'omit',referrerPolicy:'no-referrer',cache:'no-store',signal:abort.signal});
+        const bytes=method==='GET' && response.status===200 ? new Uint8Array(await response.arrayBuffer()) : null;
+        return {status:response.status,ok:response.ok,headers:response.headers,bytes};
+      }
       catch{throw Error('인터넷 연결을 확인해 주세요. 공유 달력에 연결하지 못했어요.');}
       finally{clearTimeout(timer);}
     }
@@ -45,7 +59,7 @@
       if(r.status===204)return null;
       if(r.status===404)throw Error('이 초대 링크의 달력을 찾을 수 없어요.');
       if(!r.ok)throw Error('공유 달력을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
-      const bytes=new Uint8Array(await r.arrayBuffer());
+      const bytes=r.bytes;
       const clear=await crypto.subtle.decrypt({name:'AES-GCM',iv:bytes.slice(0,12)},key,bytes.slice(12));
       return {version:r.headers.get('X-Dal-Version'),state:window.MoonCalendar.readState(JSON.parse(new TextDecoder().decode(clear)))};
     }
@@ -73,9 +87,9 @@
       }
       throw Error('두 사람이 동시에 저장하고 있어요. 다시 저장해 주세요.');
     }
-    return {load,write,commit};
+    return {load,write,commit,roomCode};
   }
-  const api={connect,merge,valid,newSecret,publicUrl,labels};
+  const api={connect,merge,valid,invitation,newSecret,publicUrl,labels};
   if(typeof window!=='undefined')window.MoonPair=api;
   if(typeof module!=='undefined')module.exports=api;
 })();

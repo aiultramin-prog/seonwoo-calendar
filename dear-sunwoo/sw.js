@@ -1,5 +1,5 @@
 'use strict';
-const cacheName='moonletter-static-v2.0.0';
+const cacheName='moonletter-static-v2.1.0';
 const assets=['./index.html','./month.css','./dates.js','./pair.js','./month.js','./manifest.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil((async()=>{
   const cache=await caches.open(cacheName);
