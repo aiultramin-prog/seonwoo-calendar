@@ -208,7 +208,7 @@
       const d=C.add(start,i);
       if(d.slice(0,7)!==first.slice(0,7)){grid.append(el('span','blank-day'));continue;}
       const list=state.events.filter(e=>C.occurs(e,d)),holiday=C.holidays[d];
-      const button=el('button','day'+(d===today?' is-today':'')+(d===selected?' selected':'')+(holiday?' holiday':C.dow(d)===0?' sun':C.dow(d)===6?' sat':''));
+      const button=el('button','day'+(holiday?' holiday':C.dow(d)===0?' sun':C.dow(d)===6?' sat':''));
       button.type='button';button.dataset.date=d;
       button.setAttribute('aria-label',[d,holiday,list.length?'일정 '+list.length+'개':''].filter(Boolean).join(' '));
       if(list.some(e=>e.owner))button.setAttribute('aria-label',button.getAttribute('aria-label')+' · '+list.map(e=>[P.labels[e.owner],e.title].filter(Boolean).join(' ')).join(', '));
