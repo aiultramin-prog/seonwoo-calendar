@@ -536,11 +536,17 @@
   function pairPanel(){
     const invite=joining && joining!==prefs.secret, active=shared();
     $('pairInfo').textContent=native?'Safari에서 같은 달력을 열어 두 사람의 일정을 맞출 수 있어요.':invite?'초대받은 공유 달력에 참여할까요? 참여할 이름을 선택해 주세요. 기존 달력은 따로 보관돼요.':active?'동민·선우·함께 일정을 두 사람이 같이 보고 수정해요. 초대 링크는 두 분끼리 보관하세요.':prefs.secret?'연결해 둔 공유 달력으로 돌아갈 수 있어요.':'동민과 선우가 같은 달력에 각자 일정과 함께할 약속을 적어요. 기존 개인 일정은 따로 보관돼요.';
-    $('pairStart').textContent=native?'Safari에서 공유 달력 열기':invite?'이 달력에 참여':prefs.secret?'공유 달력 열기':'공유 달력 만들기';
+    $('pairStart').textContent=native?'Safari에서 공유 달력 열기':invite?'이 달력에 참여':prefs.secret?'공유 달력 열기':'새 공유 달력 만들기';
     $('pairStart').hidden=!!(active&&!invite);
     $('pairInvite').hidden=!active||!!invite;
     $('pairImport').hidden=!active||!!invite;
     $('pairSwitch').hidden=!active||!!invite;
+    clearDevicePanel();
+    $('deviceDetails').hidden=!!native||!!invite;$('deviceSource').hidden=!active;
+    if(!native&&!invite&&!active&&(navigator.standalone||window.matchMedia('(display-mode: standalone)').matches))$('deviceDetails').open=true;
+    const target=joining;
+    msg($('joinNumber'),'');
+    if(target)P.roomNumber(target).then(number=>{if(joining===target)msg($('joinNumber'),'참여할 달력 번호 '+number);});
     $('roleField').hidden=!!native;
     $('pairRole').value=invite&&!prefs.secret?'':prefs.role;
     $('pairCheck').hidden=!active||!!invite;
@@ -564,6 +570,38 @@
     const button=$('pairRefresh');button.disabled=true;
     try{await pollRoom(true);}finally{button.disabled=false;}
   };
+  let expiryTimer;
+  function clearDevicePanel(){
+    clearTimeout(expiryTimer);
+    $('deviceDetails').open=false;$('deviceTicket').hidden=true;
+    $('deviceCode').textContent='';$('deviceInput').value='';msg($('deviceError'),'');
+  }
+  $('issueDevice').onclick=async()=>{
+    const button=$('issueDevice'),secret=prefs.secret;
+    button.disabled=true;$('deviceTicket').hidden=true;msg($('deviceError'),'');
+    try{
+      const source=await P.connect(secret);
+      const code=await source.issueCode();
+      if(!$('shareDialog').open||!shared()||prefs.secret!==secret||joining)return;
+      $('deviceCode').textContent=code;$('deviceTicket').hidden=false;
+      clearTimeout(expiryTimer);
+      expiryTimer=setTimeout(()=>{$('deviceTicket').hidden=true;$('deviceCode').textContent='';},600000);
+    }catch(err){msg($('deviceError'),err.message);}
+    finally{button.disabled=false;}
+  };
+  $('deviceJoin').onsubmit=async event=>{
+    event.preventDefault();
+    const button=$('deviceJoin').querySelector('button');button.disabled=true;msg($('deviceError'),'');
+    try{
+      const secret=await P.redeemCode($('deviceInput').value);
+      if(!$('shareDialog').open)return;
+      if(shared()&&prefs.secret===secret){
+        clearDevicePanel();announce('이미 같은 공유 달력이에요. 최신 일정을 확인해요.');await pollRoom(true);return;
+      }
+      queueInvite(secret);
+    }catch(err){msg($('deviceError'),err.message);}
+    finally{button.disabled=false;}
+  };
   $('checkInvite').onclick=()=>{
     const key=P.invitation($('joinAddress').value);
     if(!key){msg($('pairError'),'초대 정보가 없는 주소예요. 상대방이 ‘초대 링크 복사’로 보낸 전체 주소를 붙여넣어 주세요.');return;}
@@ -574,7 +612,7 @@
     queueInvite(key);
   };
   $('priorRoom').onclick=()=>{if(P.valid(prefs.previous))queueInvite(prefs.previous);};
-  $('shareDialog').addEventListener('close',()=>{if(!native&&joining&&!$('shareDialog').open)clearInvite();});
+  $('shareDialog').addEventListener('close',()=>{if(!$('shareDialog').open){clearDevicePanel();if(!native&&joining)clearInvite();}});
   $('pairCopy').onclick=async()=>{
     const url=pairLink();
     try{await navigator.clipboard.writeText(url);announce('초대 링크를 복사했어요. 상대방에게 붙여넣어 보내세요.');}

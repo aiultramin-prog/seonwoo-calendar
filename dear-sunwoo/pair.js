@@ -33,12 +33,48 @@
       return validPage && keys.length===1 && valid(keys[0]) ? keys[0] : null;
     }catch{return null;}
   }
+  const deviceEndpoint=new URL('device/v1',endpoint).href;
+  const alphabet='0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+  const sha=text=>crypto.subtle.digest('SHA-256',encoder.encode(text));
+  const roomNumber=async secret=>hex(await sha('dalpair-v1/display/'+secret)).slice(0,8).toUpperCase().replace(/^(.{4})/,'$1-');
+  function normalizedCode(value){
+    const code=String(value||'').toUpperCase().replace(/[-\s]/g,'').replace(/O/g,'0').replace(/[IL]/g,'1');
+    if(code.length!==12||[...code].some(character=>!alphabet.includes(character)))throw Error('앱 연결 코드 12자리를 입력해 주세요. 일정이 보이는 달력에서 코드를 받을 수 있어요.');
+    return code;
+  }
+  async function transferKeys(code){
+    const lookup=hex(await sha('dalpair-device-v1/lookup/'+code));
+    const key=await crypto.subtle.importKey('raw',await sha('dalpair-device-v1/cipher/'+code),'AES-GCM',false,['encrypt','decrypt']);
+    return {lookup,key};
+  }
+  async function deviceRequest(options,method,headers,body){
+    const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),15000);
+    try{
+      const r=await (options.fetch||fetch)(options.deviceEndpoint||deviceEndpoint,{method,headers,body,credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',signal:abort.signal});
+      if(r.ok)return method==='POST'?new Uint8Array(await r.arrayBuffer()):null;
+      if(method==='POST'&&[404,409,410].includes(r.status))throw Error('이미 사용했거나 만료된 코드예요. 일정이 보이는 달력에서 새 코드를 받아 주세요.');
+      throw Error('앱 연결을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.');
+    }catch(err){
+      if(err.name==='AbortError'||err instanceof TypeError)throw Error('인터넷 연결을 확인한 뒤 다시 시도해 주세요.');
+      throw err;
+    }finally{clearTimeout(timer);}
+  }
+  async function redeemCode(value,options={}){
+    const {lookup,key}=await transferKeys(normalizedCode(value));
+    const bytes=await deviceRequest(options,'POST',{'X-Dal-Transfer':lookup});
+    try{
+      const clear=await crypto.subtle.decrypt({name:'AES-GCM',iv:bytes.slice(0,12)},key,bytes.slice(12));
+      const secret=new TextDecoder().decode(clear);
+      if(valid(secret))return secret;
+    }catch{}
+    throw Error('코드를 읽지 못했어요. 새 코드를 받아 주세요.');
+  }
   async function connect(secret, options={}){
     if(!valid(secret))throw Error('초대 링크를 다시 확인해 주세요.');
     const digest=tag=>crypto.subtle.digest('SHA-256',encoder.encode('dalpair-v1/'+tag+'/'+secret));
     const key=await crypto.subtle.importKey('raw',await digest('cipher'),'AES-GCM',false,['encrypt','decrypt']);
     const bearer=hex(await digest('access'));
-    const roomCode=hex(await digest('display')).slice(0,8).toUpperCase().replace(/^(.{4})/,'$1-');
+    const roomCode=await roomNumber(secret);
     const transport=options.fetch||fetch;
     const api=options.endpoint||endpoint;
     async function request(method,rev,body){
@@ -87,9 +123,19 @@
       }
       throw Error('두 사람이 동시에 저장하고 있어요. 다시 저장해 주세요.');
     }
-    return {load,write,commit,roomCode};
+    async function issueCode(){
+      const code=Array.from(crypto.getRandomValues(new Uint8Array(12)),byte=>alphabet[byte&31]).join('');
+      const {lookup,key:wrapKey}=await transferKeys(code);
+      const iv=crypto.getRandomValues(new Uint8Array(12));
+      const encrypted=await crypto.subtle.encrypt({name:'AES-GCM',iv},wrapKey,encoder.encode(secret));
+      const sealed=new Uint8Array(iv.length+encrypted.byteLength);
+      sealed.set(iv);sealed.set(new Uint8Array(encrypted),iv.length);
+      await deviceRequest(options,'PUT',{'X-Dal-Transfer':lookup,'X-Dal-Key':bearer,'Content-Type':'application/octet-stream'},sealed);
+      return code.match(/.{4}/g).join('-');
+    }
+    return {load,write,commit,roomCode,issueCode};
   }
-  const api={connect,merge,valid,invitation,newSecret,publicUrl,labels};
+  const api={connect,merge,valid,invitation,newSecret,publicUrl,labels,roomNumber,redeemCode};
   if(typeof window!=='undefined')window.MoonPair=api;
   if(typeof module!=='undefined')module.exports=api;
 })();

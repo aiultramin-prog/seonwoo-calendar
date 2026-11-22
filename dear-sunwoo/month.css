@@ -179,5 +179,11 @@ dialog::backdrop { background: #1114 }
 #pairCode {font-size:.9rem;font-variant-numeric:tabular-nums}
 #pairStatus {margin:.2rem 0 0}
 .pair-check button {flex-shrink:0}
-#joinDetails summary {padding:.5rem 0;cursor:pointer}
+:is(#joinDetails,#deviceDetails) summary {padding:.5rem 0;cursor:pointer}
 #joinDetails label {margin:.3rem 0 .5rem}
+
+#deviceSource,#deviceJoin {margin:.5rem 0}
+#deviceJoin {display:grid;gap:.4rem}
+#deviceJoin button {justify-self:start}
+#deviceTicket {padding:.65rem 0}
+#deviceCode {font:700 1.18rem ui-monospace,monospace;letter-spacing:.07em;user-select:all}

@@ -12,7 +12,7 @@
         const timer=setTimeout(()=>reject(Error('timeout')),18000);
         worker.addEventListener('controllerchange',()=>{clearTimeout(timer);resolve();},{once:true});
         fetch('./index.html',{cache:'no-store'}).then(r=>r.text()).then(body=>{
-          if(body.includes('id="pairRefresh"')){clearTimeout(timer);resolve();}
+          if(body.includes('id="issueDevice"')){clearTimeout(timer);resolve();}
         }).catch(()=>{});
       });
       const update=worker.getRegistration().then(reg=>reg?.update());

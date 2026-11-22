@@ -45,9 +45,15 @@
 <dialog id="memoEditor" aria-labelledby="memoTitle"><form class="sheet" id="memoForm"><div class="sheet-head"><h2 id="memoTitle">메모 쓰기</h2><button type="button" data-close="memoEditor" class="x" aria-label="닫기">×</button></div><label>날짜<input id="memoDate" type="date" min="1900-01-01" max="2099-12-31" required></label><label>메모<textarea id="memoBody" rows="5" maxlength="2000" placeholder="이날 기억할 내용을 적으세요"></textarea></label><p class="error" id="memoError" role="alert" hidden></p><div class="sheet-actions"><button type="button" class="danger" id="removeMemo" hidden>삭제</button><button class="primary" type="submit">저장</button></div></form></dialog>
 <dialog id="shareDialog" aria-labelledby="shareTitle"><div class="sheet pair-sheet"><div class="sheet-head"><h2 id="shareTitle">둘이 쓰는 달력</h2><button type="button" data-close="shareDialog" class="x" aria-label="닫기">×</button></div>
 <p class="meta" id="pairInfo"></p><div class="pair-check" id="pairCheck" hidden><div><strong id="pairCode"></strong><p class="micro" id="pairStatus" role="status"></p></div><button class="secondary" type="button" id="pairRefresh">지금 동기화</button></div>
+<p id="joinNumber" class="meta" role="status" hidden></p>
 <div id="roleField"><label>이 기기에서 기본으로 쓸 이름<select id="pairRole"><option value="" disabled>이름 선택</option><option value="dongmin">동민</option><option value="sunwoo">선우</option></select></label></div>
 <button class="primary" id="pairStart">공유 달력 만들기</button><button class="primary" id="pairInvite" hidden>초대 링크 보내기</button>
 <div id="pairAddressBox" hidden><label>두 사람의 초대 링크<input id="shareAddress" readonly></label><small>이 링크를 가진 사람은 일정을 보고 수정할 수 있어요.</small></div>
+<details id="deviceDetails"><summary>홈 화면 앱 연결</summary>
+<p class="micro">카톡에서 일정이 보이면 그 달력에서 코드를 받으세요. 홈 화면 앱에서 코드를 입력하면 같은 달력이 열려요.</p>
+<div id="deviceSource"><button type="button" class="secondary" id="issueDevice">앱 연결 코드 받기</button><div id="deviceTicket" hidden><output id="deviceCode"></output><small>홈 화면의 달력 앱에 10분 안에 한 번 입력하세요. 코드를 가진 사람이 이 달력에 참여할 수 있어요.</small></div></div>
+<form id="deviceJoin"><label for="deviceInput">앱 연결 코드 입력</label><input id="deviceInput" type="text" maxlength="24" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="4자리씩 세 묶음"><button type="submit" class="secondary">코드 확인</button></form>
+<p id="deviceError" class="error" role="alert" hidden></p></details>
 <details id="joinDetails"><summary>받은 초대 링크로 연결</summary><label>상대방이 보낸 초대 링크<input id="joinAddress" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="초대 링크 붙여넣기"></label><button type="button" class="secondary" id="checkInvite">초대 확인</button></details>
 <div class="settings-group"><button class="setting-action" id="pairCopy" hidden>초대 링크 복사</button><button class="setting-action" id="priorRoom" hidden>이전에 연결한 공유 달력 열기</button><button class="setting-action" id="pairImport" hidden>내 기존 일정을 공유 달력에 복사</button><button class="setting-action" id="pairSwitch" hidden>내 개인 달력 보기</button><button class="setting-action" id="publicLink">앱 주소만 공유</button></div>
 <p class="error" id="pairError" role="alert" hidden></p></div></dialog>
